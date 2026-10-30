@@ -1,0 +1,66 @@
+{
+  "nom": "Récapitulatif des factures",
+  "demande": "Lis toutes les factures PDF, extrais le fournisseur, le numéro de facture, la date, le montant HT et le montant TTC, puis crée un tableau récapitulatif Excel trié par date.",
+  "plan": {
+    "titre": "Factures → tableau récapitulatif",
+    "etapes": [
+      {
+        "id": "etape_1",
+        "action": "lire_fichier",
+        "titre": "Lire les factures",
+        "parametres": {
+          "fichiers": "*.pdf"
+        }
+      },
+      {
+        "id": "etape_2",
+        "action": "analyser_ia",
+        "titre": "Extraire les informations",
+        "parametres": {
+          "instruction": "Extrais les informations principales de la facture.",
+          "champs": {
+            "fournisseur": "nom du fournisseur",
+            "numero": "numéro de facture",
+            "date": "date de la facture au format AAAA-MM-JJ",
+            "montant_ht": "montant total HT en nombre",
+            "montant_ttc": "montant total TTC en nombre"
+          }
+        }
+      },
+      {
+        "id": "etape_3",
+        "action": "transformer",
+        "titre": "Trier par date",
+        "parametres": {
+          "operations": [
+            {
+              "type": "trier",
+              "par": "date",
+              "ordre": "croissant"
+            },
+            {
+              "type": "selectionner",
+              "colonnes": [
+                "date",
+                "fournisseur",
+                "numero",
+                "montant_ht",
+                "montant_ttc",
+                "fichier"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "etape_4",
+        "action": "ecrire_fichier",
+        "titre": "Tableau récapitulatif",
+        "parametres": {
+          "nom_fichier": "recap_factures.xlsx"
+        }
+      }
+    ]
+  },
+  "exemples": "3_factures"
+}

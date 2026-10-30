@@ -1,0 +1,36 @@
+{
+  "nom": "Emails aux étudiants",
+  "demande": "Lis la liste des étudiants (Excel) et rédige pour chacun un email personnalisé et bienveillant qui annonce sa note finale, reprend ses points forts et ses axes d'amélioration. Enregistre le résultat dans un fichier Excel.",
+  "plan": {
+    "titre": "Étudiants → emails personnalisés",
+    "etapes": [
+      {
+        "id": "etape_1",
+        "action": "lire_fichier",
+        "titre": "Lire la liste des étudiants",
+        "parametres": {
+          "fichiers": "*.xlsx"
+        }
+      },
+      {
+        "id": "etape_2",
+        "action": "generer_texte",
+        "titre": "Rédiger un email par étudiant",
+        "parametres": {
+          "instruction": "Rédige un email personnalisé et bienveillant à l'étudiant (objet + corps, tutoiement interdit) qui annonce sa note finale sur 20, reprend ses points forts et ses axes d'amélioration. Signe « L'équipe pédagogique ».",
+          "pour_chaque_ligne": true,
+          "colonne_sortie": "email"
+        }
+      },
+      {
+        "id": "etape_3",
+        "action": "ecrire_fichier",
+        "titre": "Enregistrer les emails",
+        "parametres": {
+          "nom_fichier": "emails_etudiants.xlsx"
+        }
+      }
+    ]
+  },
+  "exemples": "4_etudiants"
+}

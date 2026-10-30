@@ -1,0 +1,67 @@
+{
+  "nom": "Classement des CV",
+  "demande": "Lis tous les CV en PDF, extrais pour chaque candidat son nom, ses compétences et ses années d'expérience, donne un score sur 100 par rapport à l'offre d'emploi offre_emploi.txt avec une justification, puis crée un classement Excel du meilleur au moins bon.",
+  "plan": {
+    "titre": "CV → score → classement",
+    "etapes": [
+      {
+        "id": "etape_1",
+        "action": "lire_fichier",
+        "titre": "Lire les CV",
+        "parametres": {
+          "fichiers": "cv_*.pdf"
+        }
+      },
+      {
+        "id": "etape_2",
+        "action": "analyser_ia",
+        "titre": "Extraire et scorer",
+        "parametres": {
+          "instruction": "Analyse le CV du candidat et évalue son adéquation avec l'offre d'emploi.",
+          "champs": {
+            "nom": "nom complet du candidat",
+            "competences": "liste des compétences principales",
+            "annees_experience": "nombre d'années d'expérience professionnelle (stages et alternance compris)",
+            "score": "score d'adéquation à l'offre, nombre entier de 0 à 100",
+            "justification": "une phrase qui explique le score"
+          },
+          "fichier_contexte": "offre_emploi.txt"
+        }
+      },
+      {
+        "id": "etape_3",
+        "action": "transformer",
+        "titre": "Classer par score",
+        "parametres": {
+          "operations": [
+            {
+              "type": "trier",
+              "par": "score",
+              "ordre": "decroissant"
+            },
+            {
+              "type": "selectionner",
+              "colonnes": [
+                "nom",
+                "score",
+                "annees_experience",
+                "competences",
+                "justification",
+                "fichier"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "etape_4",
+        "action": "ecrire_fichier",
+        "titre": "Classement Excel",
+        "parametres": {
+          "nom_fichier": "classement_candidats.xlsx"
+        }
+      }
+    ]
+  },
+  "exemples": "2_cv"
+}

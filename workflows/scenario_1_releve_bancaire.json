@@ -1,0 +1,38 @@
+{
+  "nom": "Relevé bancaire par catégorie",
+  "demande": "Lis le relevé bancaire CSV, classe chaque transaction dans une catégorie (Alimentation, Logement, Transport, Loisirs, Santé, Abonnements, Revenus, Épargne, Autres) avec l'IA, puis crée un rapport Excel avec une feuille par catégorie et une synthèse des montants.",
+  "plan": {
+    "titre": "Relevé bancaire → rapport par catégorie",
+    "etapes": [
+      {
+        "id": "etape_1",
+        "action": "lire_fichier",
+        "titre": "Lire le relevé bancaire",
+        "parametres": {
+          "fichiers": "*.csv"
+        }
+      },
+      {
+        "id": "etape_2",
+        "action": "analyser_ia",
+        "titre": "Catégoriser les transactions",
+        "parametres": {
+          "instruction": "Classe chaque transaction bancaire dans une catégorie d'après son libellé et son montant.",
+          "champs": {
+            "categorie": "une valeur parmi : Alimentation, Logement, Transport, Loisirs, Santé, Abonnements, Revenus, Épargne, Autres"
+          }
+        }
+      },
+      {
+        "id": "etape_3",
+        "action": "ecrire_fichier",
+        "titre": "Rapport Excel par catégorie",
+        "parametres": {
+          "nom_fichier": "rapport_categories.xlsx",
+          "feuille_par": "categorie"
+        }
+      }
+    ]
+  },
+  "exemples": "1_releve_bancaire"
+}

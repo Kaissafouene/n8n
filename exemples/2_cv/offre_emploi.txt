@@ -1,0 +1,19 @@
+OFFRE D'EMPLOI - Data Analyst Junior (H/F)
+
+Entreprise : DataNova, cabinet de conseil en données (Lyon)
+Contrat : CDI - Démarrage : janvier 2027
+
+Missions :
+- Collecter, nettoyer et analyser des données métiers
+- Construire des tableaux de bord pour les clients
+- Présenter les résultats aux équipes non techniques
+
+Compétences requises :
+- Python (pandas) et SQL : indispensables
+- Power BI ou Tableau
+- Excel avancé (tableaux croisés dynamiques)
+- Statistiques descriptives
+- Bonne communication orale et écrite, anglais professionnel
+
+Un plus : notions de machine learning, expérience en stage dans la data.
+Profil : Bac+3 à Bac+5, 0 à 2 ans d'expérience.

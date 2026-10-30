@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowGen Mini</title>
+<style>
+  :root {
+    --fond: #f3f4f8; --carte: #ffffff; --texte: #111827; --doux: #5b6170; --bord: #d9dce5;
+    --accent: #4f46e5; --accent-clair: #eef0ff; --ok: #15803d; --ok-clair: #e8f7ee;
+    --erreur: #c62828; --erreur-clair: #fdecec; --encours: #b45309; --encours-clair: #fff6e5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte);
+         font: 18px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--bord);
+           background: var(--carte); padding: 10px 16px; color: var(--texte); }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .principal { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .principal:hover:not(:disabled) { filter: brightness(1.1); }
+  .gros { font-size: 22px; padding: 14px 26px; }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 28px; background: var(--carte);
+           border-bottom: 1px solid var(--bord); }
+  header h1 { margin: 0; font-size: 28px; }
+  header h1 span { color: var(--accent); }
+  .badge { padding: 4px 12px; border-radius: 999px; background: var(--accent-clair); color: var(--accent);
+           font-size: 15px; font-weight: 600; }
+  .badge.alerte { background: var(--erreur-clair); color: var(--erreur); }
+  .espace { flex: 1; }
+
+  .page { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 24px; padding: 24px 28px; align-items: start; }
+  @media (max-width: 1000px) { .page { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
+  main, aside { min-width: 0; }
+  @media (min-width: 1001px) { aside { position: sticky; top: 16px; } }
+  .panneau { background: var(--carte); border: 1px solid var(--bord); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+  .panneau h2 { margin: 0 0 14px; font-size: 21px; }
+  .scenarios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .scenarios button { text-align: left; font-size: 16px; padding: 10px 12px; }
+  .depot { display: block; border: 2px dashed var(--bord); border-radius: 12px; padding: 16px; text-align: center;
+           color: var(--doux); cursor: pointer; font-size: 16px; }
+  .depot.survol { border-color: var(--accent); background: var(--accent-clair); }
+  .fichiers { list-style: none; padding: 0; margin: 12px 0 0; font-size: 16px; }
+  .fichiers li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #eef0f4; }
+  .fichiers li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fichiers button { padding: 2px 8px; font-size: 14px; }
+  textarea { width: 100%; min-height: 170px; font: inherit; padding: 12px; border-radius: 12px;
+             border: 1px solid var(--bord); resize: vertical; }
+  textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .journal { font-size: 15px; color: var(--doux); margin-top: 12px; }
+  .journal .ligne-err { color: var(--erreur); }
+  .message { margin-top: 12px; padding: 12px; border-radius: 10px; font-size: 16px; }
+  .message.erreur { background: var(--erreur-clair); color: var(--erreur); }
+  .message.info { background: var(--accent-clair); color: var(--accent); }
+
+  .barre { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .barre h2 { margin: 0 12px 0 0; font-size: 26px; }
+  select { font: inherit; padding: 9px; border-radius: 10px; border: 1px solid var(--bord); background: var(--carte); }
+
+  .chaine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 22px; }
+  .pastille { padding: 8px 14px; border-radius: 999px; background: var(--carte); border: 2px solid var(--bord);
+              font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .fleche-h { color: var(--doux); font-size: 22px; }
+
+  .bloc { background: var(--carte); border: 2px solid var(--bord); border-radius: 16px; padding: 18px 22px;
+          transition: border-color .2s, background .2s; }
+  .fleche { text-align: center; color: var(--doux); font-size: 28px; line-height: 1; margin: 6px 0; }
+  .ok { border-color: var(--ok) !important; }
+  .bloc.ok { background: linear-gradient(var(--ok-clair), var(--carte) 60px); }
+  .erreur { border-color: var(--erreur) !important; }
+  .bloc.erreur { background: linear-gradient(var(--erreur-clair), var(--carte) 60px); }
+  .encours { border-color: var(--encours) !important; }
+  .bloc.encours { background: linear-gradient(var(--encours-clair), var(--carte) 60px); }
+  .entete { display: flex; align-items: center; gap: 14px; }
+  .statut { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center;
+            background: var(--accent-clair); color: var(--accent); font-weight: 700; font-size: 20px; }
+  .entete h3 { margin: 0; font-size: 22px; flex: 1; }
+  .type { font-size: 15px; color: var(--doux); }
+  .duree { font-size: 15px; color: var(--doux); }
+  .spin { width: 24px; height: 24px; border: 3px solid var(--encours-clair); border-top-color: var(--encours);
+          border-radius: 50%; animation: tourne .8s linear infinite; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+  .params { margin: 12px 0 0 58px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 17px; }
+  .params .cle { color: var(--doux); }
+  .params code { background: #f3f4f8; padding: 1px 6px; border-radius: 6px; font-size: 15px; }
+  .puce { display: inline-block; background: var(--accent-clair); color: var(--accent); border-radius: 8px;
+          padding: 1px 8px; margin: 2px 4px 2px 0; font-size: 15px; }
+  .resultats { margin: 14px 0 0 58px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 1300px) { .resultats { grid-template-columns: minmax(0, 1fr); } }
+  .resultats h4 { margin: 0 0 6px; font-size: 15px; text-transform: uppercase; letter-spacing: .05em; color: var(--doux); }
+  .apercu { border: 1px solid var(--bord); border-radius: 10px; overflow: auto; max-height: 320px; background: #fafbfd; }
+  .apercu pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; font: 15px/1.45 inherit; }
+  table { border-collapse: collapse; font-size: 14px; width: 100%; }
+  th, td { padding: 6px 10px; min-width: 90px; max-width: 360px; border-bottom: 1px solid #eceef3; text-align: left; vertical-align: top; }
+  th { background: #eef0f6; position: sticky; top: 0; }
+  .total { font-size: 14px; color: var(--doux); padding: 6px 10px; }
+  .telecharger { display: inline-block; margin: 12px; padding: 12px 20px; background: var(--ok); color: #fff;
+                 border-radius: 10px; text-decoration: none; font-weight: 600; }
+  .boite-erreur { margin: 14px 0 0 58px; padding: 12px 14px; border-radius: 10px; background: var(--erreur-clair);
+                  color: var(--erreur); font-size: 16px; }
+  .boite-erreur button { margin-top: 10px; }
+  .vide { text-align: center; color: var(--doux); padding: 70px 20px; border: 2px dashed var(--bord); border-radius: 16px; }
+  .vide div { font-size: 54px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ FlowGen <span>Mini</span></h1>
+  <span class="badge" id="modele">…</span>
+  <span class="espace"></span>
+  <span class="type">Automatisation pilotée par l'IA</span>
+</header>
+
+<div class="page">
+  <aside>
+    <section class="panneau">
+      <h2>1. Les fichiers</h2>
+      <div class="scenarios" id="scenarios"></div>
+      <label class="depot" id="depot">📎 Glissez vos fichiers ici ou cliquez<br><small>CSV, Excel, PDF, texte</small>
+        <input type="file" id="choix" multiple hidden>
+      </label>
+      <ul class="fichiers" id="fichiers"></ul>
+    </section>
+    <section class="panneau">
+      <h2>2. Que voulez-vous automatiser ?</h2>
+      <textarea id="demande" placeholder="Ex : Lis le relevé bancaire, classe chaque dépense par catégorie et crée un rapport Excel."></textarea>
+      <button class="principal gros" id="generer" style="width:100%;margin-top:12px">✨ Générer le workflow</button>
+      <div id="journal" class="journal"></div>
+    </section>
+  </aside>
+
+  <main>
+    <div class="barre">
+      <h2 id="titre">3. Le workflow</h2>
+      <button class="principal gros" id="executer" disabled>▶ Exécuter</button>
+      <span class="espace"></span>
+      <button id="sauver" disabled>💾 Sauvegarder</button>
+      <select id="ouvrir"><option value="">📂 Ouvrir un workflow…</option></select>
+      <button id="importer" title="Charger un fichier JSON">⬆ Importer</button>
+      <input type="file" id="choix-json" accept=".json" hidden>
+    </div>
+    <div id="message"></div>
+    <div class="chaine" id="chaine"></div>
+    <div id="blocs">
+      <div class="vide"><div>🧩</div>Choisissez un scénario ou écrivez une demande,<br>puis cliquez sur « Générer le workflow ».</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const etat = { plan: null, demande: "", exemples: null, actions: {}, statuts: {}, enCours: false };
+
+const echapper = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function api(url, options = {}) {
+  const rep = await fetch(url, options);
+  const data = await rep.json().catch(() => ({}));
+  if (!rep.ok) throw Object.assign(new Error(data.erreur || "Erreur " + rep.status), { data });
+  return data;
+}
+const json = (corps) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps) });
+
+function message(texte, type = "erreur") {
+  $("message").innerHTML = texte ? `<div class="message ${type}">${texte}</div>` : "";
+}
+
+// ---------- Fichiers ----------
+function afficherFichiers(fichiers) {
+  $("fichiers").innerHTML = fichiers.map((f) =>
+    `<li>📄 <span title="${echapper(f.nom)}">${echapper(f.nom)}</span>
+     <button onclick="supprimer('${encodeURIComponent(f.nom)}')" title="Retirer">✕</button></li>`).join("")
+    + (fichiers.length ? `<li style="border:0"><span></span><button onclick="toutSupprimer()">Tout retirer</button></li>` : "");
+}
+async function envoyerFichiers(liste) {
+  const form = new FormData();
+  for (const f of liste) form.append("fichiers", f);
+  afficherFichiers((await api("/api/fichiers", { method: "POST", body: form })).fichiers);
+}
+async function supprimer(nom) { afficherFichiers((await api("/api/fichiers/" + nom, { method: "DELETE" })).fichiers); }
+async function toutSupprimer() { afficherFichiers((await api("/api/fichiers", { method: "DELETE" })).fichiers); }
+
+$("choix").onchange = (e) => envoyerFichiers(e.target.files);
+const depot = $("depot");
+depot.ondragover = (e) => { e.preventDefault(); depot.classList.add("survol"); };
+depot.ondragleave = () => depot.classList.remove("survol");
+depot.ondrop = (e) => { e.preventDefault(); depot.classList.remove("survol"); envoyerFichiers(e.dataTransfer.files); };
+
+async function chargerScenario(id) {
+  const d = await api("/api/scenario/" + id, { method: "POST" });
+  afficherFichiers(d.fichiers);
+  $("demande").value = d.demande;
+  etat.exemples = id;
+  message("Fichiers d'exemple chargés. Cliquez sur « Générer le workflow ».", "info");
+}
+
+// ---------- Génération du plan ----------
+function afficherJournal(journal) {
+  $("journal").innerHTML = (journal || []).map((j) => j.erreurs.length
+    ? `<div class="ligne-err">Tentative ${j.tentative} : ${j.erreurs.length} erreur(s) renvoyée(s) à l'IA<br><small>${j.erreurs.map(echapper).join("<br>")}</small></div>`
+    : `<div>Tentative ${j.tentative} : plan valide ✅</div>`).join("");
+}
+
+$("generer").onclick = async () => {
+  const demande = $("demande").value.trim();
+  if (!demande) return message("Écrivez d'abord ce que vous voulez automatiser.");
+  $("generer").disabled = true;
+  $("generer").textContent = "⏳ L'IA réfléchit…";
+  message("");
+  $("journal").innerHTML = "";
+  try {
+    const d = await api("/api/plan", json({ demande }));
+    afficherJournal(d.journal);
+    poserPlan(d.plan, demande);
+  } catch (e) {
+    afficherJournal(e.data?.journal);
+    message(echapper(e.message));
+  } finally {
+    $("generer").disabled = false;
+    $("generer").textContent = "✨ Générer le workflow";
+  }
+};
+
+function poserPlan(plan, demande) {
+  etat.plan = plan;
+  etat.demande = demande ?? etat.demande;
+  etat.statuts = {};
+  $("titre").textContent = plan.titre || "Workflow";
+  $("executer").disabled = $("sauver").disabled = false;
+  dessiner();
+}
+
+// ---------- Affichage des blocs ----------
+function valeurParam(cle, v) {
+  if (cle === "champs" && v && typeof v === "object")
+    return Object.entries(v).map(([k, d]) => `<span class="puce" title="${echapper(d)}">${echapper(k)}</span>`).join("");
+  if (cle === "operations" && Array.isArray(v))
+    return v.map((op) => {
+      const { type, ...reste } = op;
+      return `<div><span class="puce">${echapper(type)}</span><code>${echapper(JSON.stringify(reste))}</code></div>`;
+    }).join("");
+  if (typeof v === "object") return `<code>${echapper(JSON.stringify(v))}</code>`;
+  return echapper(v);
+}
+
+function apercuHtml(a) {
+  if (!a || a.type === "vide") return `<pre>—</pre>`;
+  if (a.type === "texte") return `<pre>${echapper(a.texte)}${a.total > a.texte.length ? "…" : ""}</pre>`;
+  if (a.type === "fichier")
+    return `<a class="telecharger" href="${a.url}">⬇ Télécharger ${echapper(a.fichier)}</a><div class="total">${a.lignes} ligne(s) écrite(s)</div>`;
+  const tete = a.colonnes.map((c) => `<th>${echapper(c)}</th>`).join("");
+  const corps = a.lignes.map((l) => "<tr>" + a.colonnes.map((c) => `<td>${echapper(l[c])}</td>`).join("") + "</tr>").join("");
+  return `<table><tr>${tete}</tr>${corps}</table><div class="total">${a.total} ligne(s)${a.total > a.lignes.length ? ` — ${a.lignes.length} affichées` : ""}</div>`;
+}
+
+function blocHtml(id, numero, icone, titre, type, params, r) {
+  const classe = r ? (r.statut || "") : "";
+  const pastille = !r ? numero : r.statut === "encours" ? `<div class="spin"></div>` : r.statut === "ok" ? "✅" : "❌";
+  let html = `<div class="bloc ${classe}" id="bloc-${id}">
+    <div class="entete"><div class="statut">${pastille}</div>
+      <h3>${icone} ${echapper(titre)}</h3><span class="type">${echapper(type)}</span>
+      ${r && r.duree !== undefined ? `<span class="duree">${r.duree} s</span>` : ""}</div>`;
+  if (params && Object.keys(params).length)
+    html += `<div class="params">${Object.entries(params).map(([k, v]) =>
+      `<div class="cle">${echapper(k)}</div><div>${valeurParam(k, v)}</div>`).join("")}</div>`;
+  if (r && r.statut === "erreur") {
+    html += `<div class="boite-erreur">❌ ${echapper(r.erreur)}<br>
+      <button class="principal" onclick="reparer('${id}')">🔧 Demander à l'IA de corriger</button></div>`;
+  }
+  if (r && (r.entree || r.sortie)) {
+    html += `<div class="resultats">`;
+    if (r.entree) html += `<div><h4>Entrée</h4><div class="apercu">${apercuHtml(r.entree)}</div></div>`;
+    if (r.sortie) html += `<div><h4>Sortie</h4><div class="apercu">${apercuHtml(r.sortie)}</div></div>`;
+    html += `</div>`;
+  }
+  return html + `</div>`;
+}
+
+function dessiner() {
+  const plan = etat.plan;
+  if (!plan) return;
+  const s = etat.statuts;
+  const pastilles = [`<span class="pastille ${s.declencheur?.statut || ""}">⚡ Déclencheur</span>`]
+    .concat(plan.etapes.map((e, i) => `<span class="pastille ${s[e.id]?.statut || ""}">${etat.actions[e.action]?.icone || "❓"} Étape ${i + 1}</span>`));
+  $("chaine").innerHTML = pastilles.join(`<span class="fleche-h">→</span>`);
+
+  const blocs = [blocHtml("declencheur", "⚡", "⚡", "Déclencheur manuel", "clic sur « Exécuter »", null, s.declencheur)];
+  plan.etapes.forEach((e, i) => {
+    const a = etat.actions[e.action] || { icone: "❓", libelle: e.action };
+    const params = { ...(e.parametres || {}) };
+    if (e.entree) params["entrée"] = "sortie de " + e.entree;
+    blocs.push(blocHtml(e.id, i + 1, a.icone, e.titre || a.libelle, a.libelle, params, s[e.id]));
+  });
+  $("blocs").innerHTML = blocs.join(`<div class="fleche">↓</div>`);
+}
+
+// ---------- Exécution en direct ----------
+$("executer").onclick = async () => {
+  if (!etat.plan || etat.enCours) return;
+  etat.enCours = true;
+  etat.statuts = {};
+  $("executer").disabled = $("generer").disabled = true;
+  message("");
+  dessiner();
+  try {
+    const rep = await fetch("/api/executer", json({ plan: etat.plan }));
+    if (!rep.ok) throw new Error((await rep.json()).erreur);
+    const lecteur = rep.body.getReader();
+    const decodeur = new TextDecoder();
+    let tampon = "";
+    while (true) {
+      const { value, done } = await lecteur.read();
+      if (done) break;
+      tampon += decodeur.decode(value, { stream: true });
+      const lignes = tampon.split("\n");
+      tampon = lignes.pop();
+      for (const l of lignes) if (l.trim()) evenement(JSON.parse(l));
+    }
+  } catch (e) {
+    message(echapper(e.message));
+  } finally {
+    etat.enCours = false;
+    $("executer").disabled = $("generer").disabled = false;
+  }
+};
+
+function evenement(e) {
+  if (e.evt === "debut") etat.statuts[e.id] = { statut: "encours" };
+  else if (e.evt === "fin") etat.statuts[e.id] = e;
+  else if (e.evt === "termine") {
+    message(e.statut === "ok" ? "✅ Workflow terminé avec succès." : "❌ Le workflow s'est arrêté sur une erreur.",
+            e.statut === "ok" ? "info" : "erreur");
+  }
+  dessiner();
+  if (e.evt === "debut") $("bloc-" + e.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function reparer(id) {
+  const erreur = etat.statuts[id]?.erreur;
+  message("🔧 L'IA corrige le workflow…", "info");
+  try {
+    const d = await api("/api/reparer", json({ demande: etat.demande, plan: etat.plan, etape: id, erreur }));
+    afficherJournal(d.journal);
+    poserPlan(d.plan);
+    message("Workflow corrigé par l'IA. Relancez « Exécuter ».", "info");
+  } catch (e) {
+    afficherJournal(e.data?.journal);
+    message(echapper(e.message));
+  }
+}
+
+// ---------- Sauvegarde / ouverture ----------
+$("sauver").onclick = async () => {
+  const nom = prompt("Nom du workflow :", etat.plan.titre || "mon workflow");
+  if (!nom) return;
+  const contenu = { nom, demande: etat.demande, plan: etat.plan, exemples: etat.exemples };
+  const d = await api("/api/workflows", json(contenu));
+  const lien = document.createElement("a");  // copie téléchargée sur l'ordinateur
+  lien.href = URL.createObjectURL(new Blob([JSON.stringify(contenu, null, 2)], { type: "application/json" }));
+  lien.download = d.nom + ".json";
+  lien.click();
+  message(`💾 Workflow sauvegardé (workflows/${d.nom}.json).`, "info");
+  rafraichir();
+};
+
+$("ouvrir").onchange = async (e) => {
+  if (!e.target.value) return;
+  const d = await api("/api/workflows/" + e.target.value);
+  e.target.value = "";
+  afficherFichiers(d.fichiers);
+  ouvrirWorkflow(d.workflow);
+};
+
+$("importer").onclick = () => $("choix-json").click();
+$("choix-json").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { ouvrirWorkflow(JSON.parse(await f.text())); } catch { message("Fichier JSON invalide."); }
+  e.target.value = "";
+};
+
+function ouvrirWorkflow(w) {
+  if (!w.plan?.etapes) return message("Ce fichier ne contient pas de workflow.");
+  $("demande").value = w.demande || "";
+  etat.exemples = w.exemples || null;
+  $("journal").innerHTML = "";
+  poserPlan(w.plan, w.demande || "");
+  message(`📂 Workflow « ${echapper(w.nom || w.plan.titre)} » chargé. Cliquez sur « Exécuter ».`, "info");
+}
+
+// ---------- Démarrage ----------
+async function rafraichir() {
+  const d = await api("/api/etat");
+  etat.actions = d.actions;
+  $("modele").textContent = d.cle ? "Modèle : " + d.modele : "⚠️ Clé OpenAI manquante (.env)";
+  $("modele").classList.toggle("alerte", !d.cle);
+  $("scenarios").innerHTML = d.scenarios.map((s) =>
+    `<button onclick="chargerScenario('${s.id}')">${s.icone} ${echapper(s.titre)}</button>`).join("");
+  $("ouvrir").innerHTML = `<option value="">📂 Ouvrir un workflow…</option>` +
+    d.workflows.map((w) => `<option value="${echapper(w)}">${echapper(w)}</option>`).join("");
+  afficherFichiers(d.fichiers);
+}
+rafraichir();
+</script>
+</body>
+</html>
