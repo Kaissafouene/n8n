@@ -44,6 +44,12 @@ CATALOGUE DES ACTIONS :
 RÈGLES :
 - Les données passent d'une étape à la suivante. Une étape peut lire la sortie d'une étape plus ancienne
   avec le champ "entree": "<id de l'étape>".
+- Pour "generer_texte" sans pour_chaque_ligne, "entree" peut être une LISTE d'ids pour combiner plusieurs
+  sorties en un seul texte (ex : le cours + le travail de l'étudiant).
+- L'utilisateur n'a pas besoin d'avoir uploadé ses fichiers à l'avance : si un fichier nécessaire est absent,
+  utilise quand même "lire_fichier" avec un motif précis et un paramètre "demande" clair. Le workflow se mettra
+  en pause et demandera le fichier au bon moment. Utilise une étape "lire_fichier" par document distinct
+  (ex : le cours au début, puis le travail de l'étudiant plus tard).
 - La sortie de "ecrire_fichier" n'est pas une donnée : l'étape suivante reçoit encore la table précédente.
 - Utilise les noms de colonnes exacts des fichiers uploadés, et les noms de champs créés par les étapes précédentes.
 - {MAX_ETAPES} étapes maximum. Titres courts en français.
@@ -73,8 +79,16 @@ def valider_plan(plan):
                            f"{', '.join(actions.ACTIONS)}.")
             ids.append(eid)
             continue
-        if etape.get("entree") and etape["entree"] not in ids:
-            erreurs.append(f"{nom} : 'entree' doit désigner une étape PRÉCÉDENTE (reçu « {etape['entree']} »).")
+        entree = etape.get("entree")
+        if isinstance(entree, list):
+            if action != "generer_texte" or etape.get("parametres", {}).get("pour_chaque_ligne"):
+                erreurs.append(f"{nom} : une liste dans 'entree' n'est possible que pour generer_texte "
+                               "sans pour_chaque_ligne.")
+            for i in entree:
+                if i not in ids:
+                    erreurs.append(f"{nom} : 'entree' doit désigner des étapes PRÉCÉDENTES (reçu « {i} »).")
+        elif entree and entree not in ids:
+            erreurs.append(f"{nom} : 'entree' doit désigner une étape PRÉCÉDENTE (reçu « {entree} »).")
         if action in BESOIN_ENTREE and n == 1:
             erreurs.append(f"{nom} : « {action} » a besoin de données, commence par lire_fichier ou appel_http.")
 
@@ -102,14 +116,9 @@ def valider_plan(plan):
 
 def _verifier_details(nom, action, p):
     erreurs = []
-    if action == "lire_fichier" and not actions.fichiers_correspondants(p["fichiers"]):
-        dispo = [f.name for f in actions.ENTREES.iterdir() if f.is_file()]
-        erreurs.append(f"{nom} : aucun fichier uploadé ne correspond à « {p['fichiers']} ». Fichiers : {dispo}.")
     if action == "analyser_ia":
         if not p["champs"] or not all(isinstance(v, str) for v in p["champs"].values()):
             erreurs.append(f"{nom} : 'champs' doit être un dictionnaire non vide {{nom: description texte}}.")
-        if p.get("fichier_contexte") and not (actions.ENTREES / p["fichier_contexte"]).exists():
-            erreurs.append(f"{nom} : fichier_contexte « {p['fichier_contexte']} » n'est pas uploadé.")
     if action == "transformer":
         for i, op in enumerate(p["operations"], 1):
             if not isinstance(op, dict) or op.get("type") not in actions.OPERATIONS:

@@ -36,6 +36,8 @@ SCENARIOS = [
      "demande": "Lis la liste des étudiants (Excel) et rédige pour chacun un email personnalisé et bienveillant "
                 "qui annonce sa note finale, reprend ses points forts et ses axes d'amélioration. "
                 "Enregistre le résultat dans un fichier Excel."},
+    {"id": "5_cours", "titre": "Cours + exercices", "icone": "📚",
+     "demande": "Lis mon cours, fais-en un résumé puis propose-moi 5 petits exercices. Ensuite, demande-moi mon travail, corrige mes réponses, donne-moi une note sur 20 et les points sur lesquels je dois m'améliorer."},
 ]
 
 
@@ -44,7 +46,12 @@ def liste_fichiers():
             for f in sorted(actions.ENTREES.iterdir()) if f.is_file()]
 
 
+def vider_etapes():
+    shutil.rmtree(actions.ETAPES, ignore_errors=True)
+
+
 def vider_entrees():
+    vider_etapes()
     for f in actions.ENTREES.iterdir():
         if f.is_file():
             f.unlink()
@@ -75,9 +82,13 @@ def etat():
 
 @app.post("/api/fichiers")
 def upload():
+    dossier = actions.ENTREES
+    if request.args.get("etape"):  # fichier demandé par une étape en pause
+        dossier = actions.ETAPES / secure_filename(request.args["etape"])
+        dossier.mkdir(parents=True, exist_ok=True)
     for f in request.files.getlist("fichiers"):
         nom = secure_filename(f.filename) or "fichier"
-        f.save(actions.ENTREES / nom)
+        f.save(dossier / nom)
     return jsonify(fichiers=liste_fichiers())
 
 
@@ -109,14 +120,12 @@ def plan():
     demande = (request.json or {}).get("demande", "").strip()
     if not demande:
         return jsonify(erreur="Écrivez d'abord ce que vous voulez automatiser."), 400
+    vider_etapes()  # nouveau plan : les fichiers déposés pendant une exécution précédente sont oubliés
     try:
         resultat, journal = planner.generer_plan(demande)
         return jsonify(plan=resultat, journal=journal)
     except planner.PlanInvalide as e:
-        erreur = str(e)
-        if not liste_fichiers():
-            erreur += " Aucun fichier n'est chargé : ajoutez vos fichiers ou cliquez sur un scénario de démo."
-        return jsonify(erreur=erreur, journal=e.journal), 422
+        return jsonify(erreur=str(e), journal=e.journal), 422
     except Exception as e:
         return jsonify(erreur=str(e)), 500
 

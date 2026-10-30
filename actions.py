@@ -20,6 +20,7 @@ from openai import OpenAI
 
 DOSSIER = Path(__file__).parent
 ENTREES = DOSSIER / "espace" / "entrees"   # fichiers uploadés
+ETAPES = ENTREES / "etapes"                # fichiers déposés pendant l'exécution, un dossier par étape
 SORTIES = DOSSIER / "espace" / "sorties"   # fichiers générés
 ENTREES.mkdir(parents=True, exist_ok=True)
 SORTIES.mkdir(parents=True, exist_ok=True)
@@ -33,11 +34,15 @@ EXT_TEXTE = {".pdf", ".txt", ".md"}
 ACTIONS = {
     "lire_fichier": {
         "libelle": "Lire un fichier", "icone": "📄",
-        "description": "Lit un ou plusieurs fichiers uploadés. CSV/Excel -> une ligne par ligne du tableur. "
-                       "PDF/texte -> une ligne par fichier avec les colonnes 'fichier' et 'texte'.",
+        "description": "Lit un ou plusieurs fichiers. CSV/Excel -> une ligne par ligne du tableur. "
+                       "PDF/texte -> une ligne par fichier avec les colonnes 'fichier' et 'texte'. "
+                       "Si aucun fichier ne correspond, le workflow se met en pause et demande le fichier "
+                       "à l'utilisateur (message 'demande').",
         "parametres": {
             "fichiers": {"type": "texte", "requis": True,
-                         "aide": "nom exact d'un fichier uploadé ou motif, ex : 'cv_*.pdf', '*.csv'"},
+                         "aide": "nom exact d'un fichier uploadé ou motif, ex : 'cv_*.pdf', '*.csv', 'cours*'"},
+            "demande": {"type": "texte", "requis": False,
+                        "aide": "message affiché si le fichier doit être demandé, ex : 'Déposez votre cours (PDF)'"},
         },
     },
     "analyser_ia": {
@@ -51,7 +56,7 @@ ACTIONS = {
                        "aide": "dictionnaire {nom_colonne: description}, ex : {\"categorie\": \"Alimentation, Transport...\"}"},
             "contexte": {"type": "texte", "requis": False, "aide": "informations supplémentaires utiles (optionnel)"},
             "fichier_contexte": {"type": "texte", "requis": False,
-                                 "aide": "nom d'un fichier uploadé dont le texte sert de référence (ex : une offre d'emploi)"},
+                                 "aide": "nom d'un fichier DÉJÀ uploadé dont le texte sert de référence (ex : une offre d'emploi)"},
         },
     },
     "transformer": {
@@ -247,8 +252,13 @@ def description_fichiers():
 # --------------------------------------------------------------------------
 # Les 6 actions : chacune reçoit (donnees_entree, parametres) et renvoie sa sortie
 # --------------------------------------------------------------------------
-def lire_fichier(donnees, p):
-    fichiers = fichiers_correspondants(p["fichiers"])
+def fichiers_etape(etape_id):
+    dossier = ETAPES / etape_id
+    return sorted(f for f in dossier.iterdir() if f.is_file()) if dossier.is_dir() else []
+
+
+def lire_fichier(donnees, p, fichiers=None):
+    fichiers = fichiers or fichiers_correspondants(p["fichiers"])
     if not fichiers:
         raise FileNotFoundError(f"Aucun fichier uploadé ne correspond à « {p['fichiers']} ».")
     lignes = []
@@ -486,6 +496,33 @@ def apercu(donnees, max_lignes=8):
     return {"type": "texte", "texte": json.dumps(donnees, ensure_ascii=False)[:3000]}
 
 
+def _en_texte(donnees):
+    if isinstance(donnees, str):
+        return donnees
+    if isinstance(donnees, list) and donnees and all("texte" in l for l in donnees):
+        return "\n\n".join(f"[{l.get('fichier', '')}]\n{l['texte']}" for l in donnees)
+    return json.dumps(donnees, ensure_ascii=False)
+
+
+def combiner(plan, resultats, ids):
+    """Réunit les sorties de plusieurs étapes en un seul texte (entree = liste d'étapes)."""
+    titres = {e["id"]: e.get("titre", e["id"]) for e in plan["etapes"]}
+    return "\n\n".join(f"### {titres[i]}\n{_en_texte(resultats.get(i))}" for i in ids)
+
+
+def attendre_fichier(etape):
+    """Met le workflow en pause jusqu'à ce que l'utilisateur dépose un fichier pour cette étape."""
+    p = etape["parametres"]
+    yield {"evt": "attente", "id": etape["id"],
+           "demande": p.get("demande") or f"Déposez le fichier demandé ({p['fichiers']})"}
+    limite = time.time() + 30 * 60
+    while not fichiers_etape(etape["id"]):
+        if time.time() > limite:
+            raise TimeoutError("Aucun fichier déposé après 30 minutes.")
+        time.sleep(1)
+        yield {"evt": "ping"}  # permet de détecter une page fermée
+
+
 def executer(plan):
     """Générateur : exécute les étapes une par une et produit des événements pour l'interface."""
     fichiers = [f.name for f in sorted(ENTREES.iterdir()) if f.is_file()]
@@ -494,10 +531,22 @@ def executer(plan):
     resultats, courant = {}, None
     for etape in plan["etapes"]:
         yield {"evt": "debut", "id": etape["id"]}
-        entree = resultats.get(etape["entree"]) if etape.get("entree") else courant
+        if isinstance(etape.get("entree"), list):
+            entree = combiner(plan, resultats, etape["entree"])
+        else:
+            entree = resultats.get(etape["entree"]) if etape.get("entree") else courant
         debut = time.time()
         try:
-            sortie = FONCTIONS[etape["action"]](entree, etape.get("parametres", {}))
+            if etape["action"] == "lire_fichier":
+                p = etape["parametres"]
+                fichiers = fichiers_etape(etape["id"]) or fichiers_correspondants(p["fichiers"])
+                if not fichiers:
+                    yield from attendre_fichier(etape)
+                    fichiers = fichiers_etape(etape["id"])
+                    debut = time.time()
+                sortie = lire_fichier(entree, p, fichiers)
+            else:
+                sortie = FONCTIONS[etape["action"]](entree, etape.get("parametres", {}))
         except Exception as e:
             yield {"evt": "fin", "id": etape["id"], "statut": "erreur", "erreur": str(e),
                    "entree": apercu(entree), "duree": round(time.time() - debut, 1)}

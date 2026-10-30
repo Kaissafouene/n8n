@@ -100,6 +100,15 @@
   .boite-erreur { margin: 14px 0 0 58px; padding: 12px 14px; border-radius: 10px; background: var(--erreur-clair);
                   color: var(--erreur); font-size: 16px; }
   .boite-erreur button { margin-top: 10px; }
+  .lien { border: 0; background: none; color: var(--doux); text-decoration: underline; font-size: 15px;
+          width: 100%; margin-top: 6px; padding: 4px; }
+  .attente { border-color: var(--accent) !important; }
+  .bloc.attente { background: linear-gradient(var(--accent-clair), var(--carte) 60px); }
+  .demande-fichier { margin: 14px 0 0 58px; display: block; border: 3px dashed var(--accent); border-radius: 14px;
+                     padding: 22px; text-align: center; color: var(--accent); font-size: 20px; font-weight: 600;
+                     cursor: pointer; background: var(--carte); animation: pulse 1.6s ease-in-out infinite; }
+  .demande-fichier small { display: block; font-weight: 400; color: var(--doux); font-size: 15px; margin-top: 4px; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-clair); } }
   .vide { text-align: center; color: var(--doux); padding: 70px 20px; border: 2px dashed var(--bord); border-radius: 16px; }
   .vide div { font-size: 54px; }
 </style>
@@ -115,24 +124,26 @@
 <div class="page">
   <aside>
     <section class="panneau">
-      <h2>1. Les fichiers</h2>
+      <h2>Que voulez-vous automatiser ?</h2>
+      <textarea id="demande" placeholder="Ex : Lis mon cours, fais-en un résumé, propose-moi des exercices puis corrige mon travail."></textarea>
+      <button class="principal gros" id="automatiser" style="width:100%;margin-top:12px">🚀 Automatiser</button>
+      <button id="generer" class="lien">ou seulement générer le workflow, sans l'exécuter</button>
+      <div id="journal" class="journal"></div>
+    </section>
+    <section class="panneau">
+      <h2>Exemples et fichiers <small class="type">(optionnel)</small></h2>
       <div class="scenarios" id="scenarios"></div>
-      <label class="depot" id="depot">📎 Glissez vos fichiers ici ou cliquez<br><small>CSV, Excel, PDF, texte</small>
+      <label class="depot" id="depot">📎 Glissez vos fichiers ici ou cliquez<br>
+        <small>Sinon, l'app vous les demandera au bon moment</small>
         <input type="file" id="choix" multiple hidden>
       </label>
       <ul class="fichiers" id="fichiers"></ul>
-    </section>
-    <section class="panneau">
-      <h2>2. Que voulez-vous automatiser ?</h2>
-      <textarea id="demande" placeholder="Ex : Lis le relevé bancaire, classe chaque dépense par catégorie et crée un rapport Excel."></textarea>
-      <button class="principal gros" id="generer" style="width:100%;margin-top:12px">✨ Générer le workflow</button>
-      <div id="journal" class="journal"></div>
     </section>
   </aside>
 
   <main>
     <div class="barre">
-      <h2 id="titre">3. Le workflow</h2>
+      <h2 id="titre">Le workflow</h2>
       <button class="principal gros" id="executer" disabled>▶ Exécuter</button>
       <span class="espace"></span>
       <button id="sauver" disabled>💾 Sauvegarder</button>
@@ -143,7 +154,7 @@
     <div id="message"></div>
     <div class="chaine" id="chaine"></div>
     <div id="blocs">
-      <div class="vide"><div>🧩</div>Choisissez un scénario ou écrivez une demande,<br>puis cliquez sur « Générer le workflow ».</div>
+      <div class="vide"><div>🧩</div>Écrivez ce que vous voulez automatiser,<br>puis cliquez sur « 🚀 Automatiser ».</div>
     </div>
   </main>
 </div>
@@ -192,7 +203,7 @@ async function chargerScenario(id) {
   afficherFichiers(d.fichiers);
   $("demande").value = d.demande;
   etat.exemples = id;
-  message("Fichiers d'exemple chargés. Cliquez sur « Générer le workflow ».", "info");
+  message("Exemple chargé. Cliquez sur « 🚀 Automatiser ».", "info");
 }
 
 // ---------- Génération du plan ----------
@@ -202,25 +213,29 @@ function afficherJournal(journal) {
     : `<div>Tentative ${j.tentative} : plan valide ✅</div>`).join("");
 }
 
-$("generer").onclick = async () => {
+async function generer() {
   const demande = $("demande").value.trim();
-  if (!demande) return message("Écrivez d'abord ce que vous voulez automatiser.");
-  $("generer").disabled = true;
-  $("generer").textContent = "⏳ L'IA réfléchit…";
+  if (!demande) { message("Écrivez d'abord ce que vous voulez automatiser."); return false; }
+  $("generer").disabled = $("automatiser").disabled = true;
+  $("automatiser").textContent = "⏳ L'IA prépare le workflow…";
   message("");
   $("journal").innerHTML = "";
   try {
     const d = await api("/api/plan", json({ demande }));
     afficherJournal(d.journal);
     poserPlan(d.plan, demande);
+    return true;
   } catch (e) {
     afficherJournal(e.data?.journal);
     message(echapper(e.message));
+    return false;
   } finally {
-    $("generer").disabled = false;
-    $("generer").textContent = "✨ Générer le workflow";
+    $("generer").disabled = $("automatiser").disabled = false;
+    $("automatiser").textContent = "🚀 Automatiser";
   }
-};
+}
+$("generer").onclick = generer;
+$("automatiser").onclick = async () => { if (await generer()) executer(); };
 
 function poserPlan(plan, demande) {
   etat.plan = plan;
@@ -256,7 +271,8 @@ function apercuHtml(a) {
 
 function blocHtml(id, numero, icone, titre, type, params, r) {
   const classe = r ? (r.statut || "") : "";
-  const pastille = !r ? numero : r.statut === "encours" ? `<div class="spin"></div>` : r.statut === "ok" ? "✅" : "❌";
+  const pastille = !r ? numero : r.statut === "encours" ? `<div class="spin"></div>`
+    : r.statut === "attente" ? "📎" : r.statut === "ok" ? "✅" : "❌";
   let html = `<div class="bloc ${classe}" id="bloc-${id}">
     <div class="entete"><div class="statut">${pastille}</div>
       <h3>${icone} ${echapper(titre)}</h3><span class="type">${echapper(type)}</span>
@@ -264,6 +280,11 @@ function blocHtml(id, numero, icone, titre, type, params, r) {
   if (params && Object.keys(params).length)
     html += `<div class="params">${Object.entries(params).map(([k, v]) =>
       `<div class="cle">${echapper(k)}</div><div>${valeurParam(k, v)}</div>`).join("")}</div>`;
+  if (r && r.statut === "attente") {
+    html += `<label class="demande-fichier" id="depot-${id}">📎 ${echapper(r.demande)}
+      <small>Glissez le fichier ici ou cliquez — le workflow reprendra tout seul</small>
+      <input type="file" multiple hidden onchange="deposer('${id}', this.files)"></label>`;
+  }
   if (r && r.statut === "erreur") {
     html += `<div class="boite-erreur">❌ ${echapper(r.erreur)}<br>
       <button class="principal" onclick="reparer('${id}')">🔧 Demander à l'IA de corriger</button></div>`;
@@ -275,6 +296,15 @@ function blocHtml(id, numero, icone, titre, type, params, r) {
     html += `</div>`;
   }
   return html + `</div>`;
+}
+
+async function deposer(id, fichiers) {
+  if (!fichiers.length) return;
+  const form = new FormData();
+  for (const f of fichiers) form.append("fichiers", f);
+  etat.statuts[id] = { statut: "encours" };
+  dessiner();
+  await api("/api/fichiers?etape=" + encodeURIComponent(id), { method: "POST", body: form });
 }
 
 function dessiner() {
@@ -289,18 +319,23 @@ function dessiner() {
   plan.etapes.forEach((e, i) => {
     const a = etat.actions[e.action] || { icone: "❓", libelle: e.action };
     const params = { ...(e.parametres || {}) };
-    if (e.entree) params["entrée"] = "sortie de " + e.entree;
+    if (e.entree) params["entrée"] = Array.isArray(e.entree) ? "sorties de " + e.entree.join(" + ") : "sortie de " + e.entree;
     blocs.push(blocHtml(e.id, i + 1, a.icone, e.titre || a.libelle, a.libelle, params, s[e.id]));
   });
   $("blocs").innerHTML = blocs.join(`<div class="fleche">↓</div>`);
+  document.querySelectorAll(".demande-fichier").forEach((zone) => {
+    zone.ondragover = (ev) => ev.preventDefault();
+    zone.ondrop = (ev) => { ev.preventDefault(); deposer(zone.id.slice(6), ev.dataTransfer.files); };
+  });
 }
 
 // ---------- Exécution en direct ----------
-$("executer").onclick = async () => {
+$("executer").onclick = () => executer();
+async function executer() {
   if (!etat.plan || etat.enCours) return;
   etat.enCours = true;
   etat.statuts = {};
-  $("executer").disabled = $("generer").disabled = true;
+  $("executer").disabled = $("generer").disabled = $("automatiser").disabled = true;
   message("");
   dessiner();
   try {
@@ -321,19 +356,21 @@ $("executer").onclick = async () => {
     message(echapper(e.message));
   } finally {
     etat.enCours = false;
-    $("executer").disabled = $("generer").disabled = false;
+    $("executer").disabled = $("generer").disabled = $("automatiser").disabled = false;
   }
-};
+}
 
 function evenement(e) {
+  if (e.evt === "ping") return;
   if (e.evt === "debut") etat.statuts[e.id] = { statut: "encours" };
+  else if (e.evt === "attente") etat.statuts[e.id] = { statut: "attente", demande: e.demande };
   else if (e.evt === "fin") etat.statuts[e.id] = e;
   else if (e.evt === "termine") {
     message(e.statut === "ok" ? "✅ Workflow terminé avec succès." : "❌ Le workflow s'est arrêté sur une erreur.",
             e.statut === "ok" ? "info" : "erreur");
   }
   dessiner();
-  if (e.evt === "debut") $("bloc-" + e.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (e.evt === "debut" || e.evt === "attente") $("bloc-" + e.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function reparer(id) {

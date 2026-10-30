@@ -1,0 +1,65 @@
+{
+  "nom": "Cours et exercices corrigés",
+  "demande": "Lis mon cours, fais-en un résumé puis propose-moi 5 petits exercices. Ensuite, demande-moi mon travail, corrige mes réponses, donne-moi une note sur 20 et les points sur lesquels je dois m'améliorer.",
+  "plan": {
+    "titre": "Cours → résumé et exercices → correction",
+    "etapes": [
+      {
+        "id": "etape_1",
+        "action": "lire_fichier",
+        "titre": "Lire le cours",
+        "parametres": {
+          "fichiers": "cours*",
+          "demande": "Déposez votre cours (PDF ou texte)"
+        }
+      },
+      {
+        "id": "etape_2",
+        "action": "generer_texte",
+        "titre": "Résumé et exercices",
+        "parametres": {
+          "instruction": "Fais un résumé clair et structuré du cours (10 lignes maximum), puis propose 5 petits exercices numérotés (Exercice 1 à 5), progressifs, avec leurs consignes mais SANS les solutions."
+        }
+      },
+      {
+        "id": "etape_3",
+        "action": "ecrire_fichier",
+        "titre": "Enregistrer résumé et exercices",
+        "parametres": {
+          "nom_fichier": "resume_et_exercices.txt"
+        }
+      },
+      {
+        "id": "etape_4",
+        "action": "lire_fichier",
+        "titre": "Lire mon travail",
+        "parametres": {
+          "fichiers": "*travail*",
+          "demande": "Faites les exercices, puis déposez votre travail ici (texte ou PDF)"
+        }
+      },
+      {
+        "id": "etape_5",
+        "action": "generer_texte",
+        "titre": "Corriger et conseiller",
+        "entree": [
+          "etape_1",
+          "etape_2",
+          "etape_4"
+        ],
+        "parametres": {
+          "instruction": "Tu es un professeur bienveillant. Corrige le travail de l'étudiant exercice par exercice en t'appuyant sur le cours et les exercices proposés : indique ce qui est juste, ce qui est faux et la bonne réponse. Donne une note sur 20, puis liste les 3 points principaux sur lesquels l'étudiant doit s'améliorer, avec un conseil concret pour chacun."
+        }
+      },
+      {
+        "id": "etape_6",
+        "action": "ecrire_fichier",
+        "titre": "Enregistrer la correction",
+        "parametres": {
+          "nom_fichier": "correction.txt"
+        }
+      }
+    ]
+  },
+  "exemples": "5_cours"
+}

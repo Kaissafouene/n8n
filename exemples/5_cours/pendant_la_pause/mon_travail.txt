@@ -1,0 +1,24 @@
+Mes réponses aux exercices
+
+Exercice 1 :
+Le type de 3.5 est int.
+
+Exercice 2 :
+age = 16
+if age = 18:
+    print("Majeur")
+else:
+    print("Mineur")
+
+Exercice 3 :
+for i in range(5):
+    print(i)
+Ça affiche les nombres de 1 à 5.
+
+Exercice 4 :
+notes = [10, 14, 16]
+print(notes[1])   # affiche 10
+
+Exercice 5 :
+def carre(x):
+    print(x * x)

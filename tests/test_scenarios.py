@@ -42,6 +42,12 @@ def faux_modele(messages, json_mode=True):
         return PLANS[scenario]
 
     if not json_mode:  # generer_texte
+        if "Corrige le travail" in dernier:
+            assert "cours" in dernier.lower() and "Exercice 1" in dernier and "if age = 18" in dernier
+            return "Correction\n\nExercice 1 : faux, 3.5 est un float.\nNote : 9/20\nPoints à améliorer : ..."
+        if "résumé" in dernier:
+            assert "Les conditions" in dernier
+            return "Résumé du cours...\n\nExercice 1 : quel est le type de 3.5 ?\nExercice 2 : ..."
         d = json.loads(dernier.split("Données :\n", 1)[1])
         return (f"Objet : Votre note finale\n\nBonjour {d['prenom']},\n\nVotre note finale est de "
                 f"{d['note_finale']}/20. Points forts : {d['points_forts']}. À travailler : "
@@ -121,9 +127,28 @@ df = feuilles["Données"]
 assert len(df) == 8 and df["email"].str.contains("Bonjour").all()
 print("   exemple :", df.iloc[0]["email"][:60].replace("\n", " "), "…")
 
+print("Scénario 5 : cours → exercices → pause → correction")
+demande = client.post("/api/scenario/5_cours").get_json()["demande"]
+plan5 = client.post("/api/plan", json={"demande": demande}).get_json()["plan"]
+travail = serveur.EXEMPLES / "5_cours" / "pendant_la_pause" / "mon_travail.txt"
+evenements = []
+for e in actions.executer(plan5):  # simule l'utilisateur qui dépose son travail pendant la pause
+    evenements.append(e)
+    if e["evt"] == "attente":
+        print("   ⏸ pause :", e["demande"])
+        assert e["id"] == "etape_4"
+        with travail.open("rb") as f:
+            assert client.post("/api/fichiers?etape=etape_4", data={"fichiers": (f, "mes_reponses.txt")}).status_code == 200
+assert [e["id"] for e in evenements if e["evt"] == "attente"] == ["etape_4"]
+assert evenements[-1] == {"evt": "termine", "statut": "ok"}, evenements[-1]
+assert "Note : 9/20" in (actions.SORTIES / "correction.txt").read_text(encoding="utf-8")
+assert (actions.SORTIES / "resume_et_exercices.txt").exists()
+print("   ✅ correction.txt et resume_et_exercices.txt créés")
+
 print("Validation : actions inventées et paramètres faux refusés")
 assert planner.valider_plan({"etapes": [{"id": "a", "action": "envoyer_email", "parametres": {}}]})
-assert planner.valider_plan({"etapes": [{"id": "a", "action": "lire_fichier", "parametres": {"fichiers": "absent.csv"}}]})
+assert planner.valider_plan({"etapes": [{"id": "a", "action": "lire_fichier", "parametres": {"fichiers": "*.csv"}},
+                                        {"id": "b", "action": "transformer", "entree": ["a"], "parametres": {"operations": []}}]})
 assert planner.valider_plan({"etapes": [{"id": "a", "action": "transformer", "parametres": {"operations": []}}]})
 
 print("Erreur d'exécution puis réparation par l'IA")
