@@ -113,7 +113,10 @@ def plan():
         resultat, journal = planner.generer_plan(demande)
         return jsonify(plan=resultat, journal=journal)
     except planner.PlanInvalide as e:
-        return jsonify(erreur=str(e), journal=e.journal), 422
+        erreur = str(e)
+        if not liste_fichiers():
+            erreur += " Aucun fichier n'est chargé : ajoutez vos fichiers ou cliquez sur un scénario de démo."
+        return jsonify(erreur=erreur, journal=e.journal), 422
     except Exception as e:
         return jsonify(erreur=str(e)), 500
 
