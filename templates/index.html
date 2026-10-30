@@ -393,7 +393,7 @@ function ouvrirWorkflow(w) {
 async function rafraichir() {
   const d = await api("/api/etat");
   etat.actions = d.actions;
-  $("modele").textContent = d.cle ? "Modèle : " + d.modele : "⚠️ Clé OpenAI manquante (.env)";
+  $("modele").textContent = d.cle ? "Modèle : " + d.modele : "⚠️ Clé " + d.modele.split(" ·")[0] + " manquante (.env)";
   $("modele").classList.toggle("alerte", !d.cle);
   $("scenarios").innerHTML = d.scenarios.map((s) =>
     `<button onclick="chargerScenario('${s.id}')">${s.icone} ${echapper(s.titre)}</button>`).join("");

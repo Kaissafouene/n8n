@@ -69,7 +69,7 @@ def accueil():
 def etat():
     catalogue = {k: {"libelle": v["libelle"], "icone": v["icone"]} for k, v in actions.ACTIONS.items()}
     workflows = sorted(f.stem for f in WORKFLOWS.glob("*.json"))
-    return jsonify(modele=actions.modele(), cle=actions.cle_configuree(), fichiers=liste_fichiers(),
+    return jsonify(modele=f"{actions.fournisseur().capitalize()} · {actions.modele()}", cle=actions.cle_configuree(), fichiers=liste_fichiers(),
                    scenarios=SCENARIOS, actions=catalogue, workflows=workflows)
 
 
@@ -170,8 +170,8 @@ def ouvrir(nom):
 
 
 if __name__ == "__main__":
-    print(f"\n  FlowGen Mini démarre sur http://localhost:{PORT}  (modèle : {actions.modele()})\n")
+    print(f"\n  FlowGen Mini démarre sur http://localhost:{PORT}  (IA : {actions.fournisseur()} · {actions.modele()})\n")
     if not actions.cle_configuree():
-        print("  ⚠️  Clé OpenAI absente : copiez .env.example en .env et ajoutez votre clé.\n")
+        print(f"  ⚠️  Clé {actions.fournisseur()} absente : copiez .env.example en .env et ajoutez votre clé.\n")
     threading.Timer(1.2, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     app.run(port=PORT, threaded=True)

@@ -1,7 +1,7 @@
 # ⚡ FlowGen Mini
 
 Un mini outil d'automatisation façon n8n, piloté par l'IA. On écrit en français ce qu'on veut automatiser,
-l'IA (OpenAI) le découpe en étapes, l'interface affiche la chaîne de blocs, puis on l'exécute bloc par bloc
+l'IA (OpenAI ou Gemini) le découpe en étapes, l'interface affiche la chaîne de blocs, puis on l'exécute bloc par bloc
 en voyant l'entrée, la sortie et le statut ✅ / ❌ de chaque étape.
 
 ## Installation
@@ -13,7 +13,12 @@ pip install -r requirements.txt
 cp .env.example .env        # Windows : copy .env.example .env
 ```
 
-Ouvrez `.env` et mettez votre clé OpenAI. Le modèle se change avec `OPENAI_MODEL` (par défaut `gpt-4o-mini`).
+Ouvrez `.env` et mettez votre clé, puis choisissez le fournisseur avec `FOURNISSEUR_IA` :
+
+- `FOURNISSEUR_IA=openai` : clé dans `OPENAI_API_KEY`, modèle dans `OPENAI_MODEL` (défaut `gpt-4o-mini`)
+- `FOURNISSEUR_IA=gemini` : clé dans `GEMINI_API_KEY`, modèle dans `GEMINI_MODEL` (défaut `gemini-2.5-flash`)
+
+Le fournisseur et le modèle utilisés s'affichent en haut de l'interface. Relancez `python app.py` après avoir modifié `.env`.
 
 ## Lancement
 

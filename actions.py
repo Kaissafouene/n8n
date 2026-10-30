@@ -111,20 +111,35 @@ AGREGATIONS = {"somme": "sum", "moyenne": "mean", "nombre": "count", "min": "min
 # --------------------------------------------------------------------------
 # Appel au modèle OpenAI
 # --------------------------------------------------------------------------
+# Gemini est appelé via son API compatible OpenAI : le même code sert aux deux fournisseurs.
+FOURNISSEURS = {
+    "openai": {"cle": "OPENAI_API_KEY", "modele": "OPENAI_MODEL", "defaut": "gpt-4o-mini", "url": None},
+    "gemini": {"cle": "GEMINI_API_KEY", "modele": "GEMINI_MODEL", "defaut": "gemini-2.5-flash",
+               "url": "https://generativelanguage.googleapis.com/v1beta/openai/"},
+}
+
+
+def fournisseur():
+    nom = os.getenv("FOURNISSEUR_IA", "openai").strip().lower()
+    return nom if nom in FOURNISSEURS else "openai"
+
+
 def modele():
-    return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    f = FOURNISSEURS[fournisseur()]
+    return os.getenv(f["modele"]) or f["defaut"]
 
 
 def cle_configuree():
-    cle = os.getenv("OPENAI_API_KEY", "")
-    return bool(cle) and not cle.startswith("sk-votre")
+    cle = os.getenv(FOURNISSEURS[fournisseur()]["cle"], "")
+    return bool(cle) and "votre" not in cle
 
 
 def appeler_ia(messages, json_mode=True):
     """Envoie les messages au modèle. Renvoie un dict (json_mode) ou du texte."""
+    f = FOURNISSEURS[fournisseur()]
     if not cle_configuree():
-        raise RuntimeError("Clé OpenAI manquante : copiez .env.example en .env et renseignez OPENAI_API_KEY.")
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        raise RuntimeError(f"Clé manquante : renseignez {f['cle']} dans le fichier .env.")
+    client = OpenAI(api_key=os.getenv(f["cle"]), base_url=f["url"])
     options = {"response_format": {"type": "json_object"}} if json_mode else {}
     reponse = client.chat.completions.create(model=modele(), messages=messages, **options)
     contenu = reponse.choices[0].message.content or ""
